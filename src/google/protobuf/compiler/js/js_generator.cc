@@ -1839,6 +1839,7 @@ void Generator::GenerateClassesAndEnums(const GeneratorOptions& options,
                                         const FileDescriptor* file) const {
   for (int i = 0; i < file->message_type_count(); i++) {
     GenerateClass(options, printer, file->message_type(i));
+    GenerateClassFromObject(options, printer, file->message_type(i));
   }
   for (int i = 0; i < file->enum_type_count(); i++) {
     GenerateEnum(options, printer, file->enum_type(i));
