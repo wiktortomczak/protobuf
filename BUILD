@@ -775,3 +775,20 @@ proto_lang_toolchain(
   command_line = "--cpp_out=$(OUT)",
   visibility = ["//visibility:public"],
 )
+
+
+################################################################################
+# JavaScript support
+################################################################################
+
+# JavaScript runtime library.
+filegroup(
+    name = "jspb",
+    srcs = glob([
+        "js/**/*.js"
+    ], exclude=[
+      "**/*_test.js",
+      "**/commonjs/*"
+    ]),
+    visibility = ["//visibility:public"],
+)
