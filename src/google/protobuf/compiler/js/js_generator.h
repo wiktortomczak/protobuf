@@ -68,12 +68,18 @@ struct GeneratorOptions {
     kImportBrowser,   // no import statements
     kImportEs6,       // import { member } from ''
   } import_style;
+  // What style of exports should be used.
+  enum ExportStyle {
+    kExportClosure,   // goog.provide()
+    kExportCommonJs,  // exports.x = x
+  } export_style;
 
   GeneratorOptions()
       : output_dir("."),
         namespace_prefix(""),
         binary(false),
         import_style(kImportClosure),
+        export_style(kExportClosure),
         add_require_for_enums(false),
         testonly(false),
         library(""),
@@ -174,7 +180,17 @@ class LIBPROTOC_EXPORT Generator : public CodeGenerator {
   void GenerateProvides(const GeneratorOptions& options,
                         io::Printer* printer,
                         std::set<string>* provided) const;
-
+  // Print constructNamespace_() calls to create namespaces that goog.provide()
+  // would create if GenerateProvides was called. Replacement for
+  // GenerateProvides.
+  void GenerateNamespaces(
+      const GeneratorOptions& options,
+      io::Printer* printer,
+      const std::vector<const FileDescriptor*>& files) const;
+  // Print assignments to CommonJS exports variable.
+  void GenerateCommonJSExports(const GeneratorOptions& options,
+                               io::Printer* printer,
+                               std::set<string>* provided) const;
   // Generate goog.setTestOnly() if indicated.
   void GenerateTestOnly(const GeneratorOptions& options,
                         io::Printer* printer) const;

@@ -1632,6 +1632,26 @@ void Generator::GenerateProvides(const GeneratorOptions& options,
   }
 }
 
+void Generator::GenerateNamespaces(
+    const GeneratorOptions& options,
+    io::Printer* printer,
+    const std::vector<const FileDescriptor*>& files) const {
+  for (int i = 0; i < files.size(); i++) {
+    printer->Print("goog.constructNamespace_('$name$');\n",
+                   "name", GetPath(options, files[i]));
+  }
+}
+
+void Generator::GenerateCommonJSExports(const GeneratorOptions& options,
+                                        io::Printer* printer,
+                                        std::set<string>* provided) const {
+  for (std::set<string>::iterator it = provided->begin();
+       it != provided->end(); ++it) {
+    printer->Print("goog.exportSymbol('$name$', $name$, exports);\n",
+                   "name", *it);
+  }
+}
+
 void Generator::GenerateRequiresForMessage(const GeneratorOptions& options,
                                            io::Printer* printer,
                                            const Descriptor* desc,
@@ -3229,6 +3249,15 @@ bool GeneratorOptions::ParseFromOptions(
         *error = "Unknown import style " + options[i].second + ", expected " +
                  "one of: closure, commonjs, browser, es6.";
       }
+    } else if (options[i].first == "export_style") {
+      if (options[i].second == "closure") {
+        export_style = kExportClosure;
+      } else if (options[i].second == "commonjs") {
+        export_style = kExportCommonJs;
+      } else {
+        *error = "Unknown export style " + options[i].second + ", expected " +
+                 "one of: closure, commonjs.";
+      }
     } else if (options[i].first == "extension") {
       extension = options[i].second;
     } else if (options[i].first == "one_output_file_per_input_file") {
@@ -3256,6 +3285,12 @@ bool GeneratorOptions::ParseFromOptions(
         "The add_require_for_enums, testonly, library, error_on_name_conflict, "
         "extension, and one_output_file_per_input_file options should only be "
         "used for import_style=closure";
+    return false;
+  }
+
+  if (export_style == GeneratorOptions::kExportCommonJs
+      && output_mode() != GeneratorOptions::kEverythingInOneFile) {
+    *error = "CommonJS exports are only implemented for single-file output";
     return false;
   }
 
@@ -3419,7 +3454,16 @@ bool Generator::GenerateAll(const std::vector<const FileDescriptor*>& files,
     std::set<string> provided;
     FindProvides(options, &printer, files, &provided);
     FindProvidesForFields(options, &printer, extensions, &provided);
-    GenerateProvides(options, &printer, &provided);
+    switch (options.export_style) {
+      case GeneratorOptions::kExportClosure:
+        GenerateProvides(options, &printer, &provided);
+        break;
+      case GeneratorOptions::kExportCommonJs:
+        GenerateNamespaces(options, &printer, files);
+        break;
+      default:
+        assert(false);
+    }
     GenerateTestOnly(options, &printer);
     GenerateRequiresForLibrary(options, &printer, files, &provided);
 
@@ -3429,6 +3473,10 @@ bool Generator::GenerateAll(const std::vector<const FileDescriptor*>& files,
       if (ShouldGenerateExtension(extensions[i])) {
         GenerateExtension(options, &printer, extensions[i]);
       }
+    }
+
+    if (options.export_style == GeneratorOptions::kExportCommonJs) {
+      GenerateCommonJSExports(options, &printer, &provided);
     }
 
     if (printer.failed()) {
