@@ -788,7 +788,8 @@ filegroup(
         "js/**/*.js"
     ], exclude=[
       "**/*_test.js",
-      "**/commonjs/*"
+      "**/commonjs/*",
+      "js/gulpfile.js"
     ]),
     visibility = ["//visibility:public"],
 )
