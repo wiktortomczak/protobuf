@@ -45,6 +45,7 @@
 #include <google/protobuf/stubs/logging.h>
 #include <google/protobuf/stubs/common.h>
 #include <google/protobuf/stubs/stringprintf.h>
+#include <google/protobuf/stubs/strutil.h>
 #include <google/protobuf/compiler/js/well_known_types_embed.h>
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/io/zero_copy_stream.h>
@@ -1647,8 +1648,20 @@ void Generator::GenerateCommonJSExports(const GeneratorOptions& options,
                                         std::set<string>* provided) const {
   for (std::set<string>::iterator it = provided->begin();
        it != provided->end(); ++it) {
-    printer->Print("goog.exportSymbol('$name$', $name$, exports);\n",
-                   "name", *it);
+    vector<string> namespace_parts = Split(*it, ".");
+    vector<string>::iterator p = namespace_parts.begin();
+    for (; ; ++p) {
+      string p_lower = *p;
+      LowerString(&p_lower);
+      if (*p != p_lower) {
+        break;
+      }
+    }
+    string name;
+    JoinStrings(vector<string>(p, namespace_parts.end()), ".", &name);
+
+    printer->Print("exports.$name$ = $full_name$;\n",
+                   "name", name, "full_name", *it);
   }
 }
 
