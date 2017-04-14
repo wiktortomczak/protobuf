@@ -197,6 +197,12 @@ string ModuleAlias(const string& filename) {
   return basename + "_pb";
 }
 
+string BaseName(const string& filename) {
+  const size_t dir_end = filename.find_last_of("/");
+  const size_t basename_start = (dir_end != string::npos) ? dir_end + 1 : 0;
+  return filename.substr(basename_start);
+}
+  
 // Returns the fully normalized JavaScript path for the given
 // file descriptor's package.
 string GetPath(const GeneratorOptions& options,
@@ -1694,13 +1700,7 @@ void Generator::GenerateRequiresForLibrary(
   bool have_message = false;
 
   for (int i = 0; i < files.size(); i++) {
-    for (int j = 0; j < files[i]->message_type_count(); j++) {
-      const Descriptor* desc = files[i]->message_type(j);
-      if (!IgnoreMessage(options, desc)) {
-        FindRequiresForMessage(options, desc, &required, &forwards,
-                               &have_message);
-      }
-    }
+    FindRequiresForFile(options, files[i], &required, &forwards, &have_message);
 
     if (!have_extensions && HasExtensions(files[i])) {
       have_extensions = true;
@@ -1796,6 +1796,20 @@ bool NamespaceOnly(const Descriptor* desc) {
   return false;
 }
 
+void Generator::FindRequiresForFile(
+    const GeneratorOptions& options,
+    const FileDescriptor* file,
+    std::set<string>* required,
+    std::set<string>* forwards,
+    bool* have_message) const {
+  for (int j = 0; j < file->message_type_count(); j++) {
+    const Descriptor* desc = file->message_type(j);
+    if (!IgnoreMessage(options, desc)) {
+      FindRequiresForMessage(options, desc, required, forwards, have_message);
+    }
+  }
+}
+
 void Generator::FindRequiresForMessage(
     const GeneratorOptions& options,
     const Descriptor* desc,
@@ -1864,6 +1878,61 @@ void Generator::GenerateTestOnly(const GeneratorOptions& options,
   if (options.testonly) {
     printer->Print("goog.setTestOnly();\n\n");
   }
+  printer->Print("\n");
+}
+
+void Generator::GenerateDescriptorForFile(
+    const GeneratorOptions& options,
+    io::Printer* printer,
+    const FileDescriptor* file,
+    const std::set<string>& provided_all_files) const {
+  printer->Print("// Descriptors of messages in $file$.\n\n",
+                 "file", file->name());
+
+    // Generate goog.provide(<message name>.descriptor).
+  std::set<string> provided;
+  FindProvidesForFile(options, printer, file, &provided);
+  for (std::set<string>::iterator it = provided.begin();
+       it != provided.end(); ++it) {
+    printer->Print("goog.provide('$name$.descriptor');\n", "name", *it);
+  }
+  printer->Print("\n");
+
+  // Generate goog.require(<dependency message name>.descriptor).
+  std::set<string> required, forwards;
+  bool have_message;
+  FindRequiresForFile(options, file, &required, &forwards, &have_message);
+  for (std::set<string>::iterator it = required.begin();
+       it != required.end(); ++it) {
+    if (provided_all_files.find(*it) == provided_all_files.end()) {
+      printer->Print("goog.require('$name$.descriptor');\n", "name", *it);
+    }
+  }
+  printer->Print("goog.require('jspb.Descriptor');\n\n");
+
+  // Generate file descriptor as Uint8Array.
+  FileDescriptorProto file_descriptor_proto;
+  file->CopyTo(&file_descriptor_proto);
+  string file_descriptor_str;
+  GOOGLE_CHECK(file_descriptor_proto.SerializeToString(&file_descriptor_str));
+  char file_descriptor_uint8[file_descriptor_str.size() * 5];
+  char* p = file_descriptor_uint8;
+  for (int i = 0; i < file_descriptor_str.size(); i++) {
+    p += sprintf(p, "%u, ", static_cast<unsigned char>(file_descriptor_str[i]));
+  }
+  p[-2] = 0;
+
+  // Generate jspb.addDescriptors(<file descriptor as Uint8Array>).
+  const string file_descriptor_uint8_var_name =
+    GetPath(options, file) + "." + StripProto(BaseName(file->name()))
+    + ".fileDescriptorBinary";
+  printer->Print(
+    "$file_descriptor_uint8_var_name$ = new Uint8Array([\n"
+    "  $file_descriptor_uint8$\n"
+    "]);\n"
+    "jspb.addDescriptors($file_descriptor_uint8_var_name$);\n",
+    "file_descriptor_uint8_var_name", file_descriptor_uint8_var_name,
+    "file_descriptor_uint8", file_descriptor_uint8);
   printer->Print("\n");
 }
 
@@ -3271,6 +3340,12 @@ bool GeneratorOptions::ParseFromOptions(
         *error = "Unknown export style " + options[i].second + ", expected " +
                  "one of: closure, commonjs.";
       }
+    } else if (options[i].first == "generate_descriptor") {
+      if (options[i].second != "") {
+        *error = "Unexpected option value for generate_descriptor";
+        return false;
+      }
+      generate_descriptor = true;
     } else if (options[i].first == "extension") {
       extension = options[i].second;
     } else if (options[i].first == "one_output_file_per_input_file") {
@@ -3490,6 +3565,12 @@ bool Generator::GenerateAll(const std::vector<const FileDescriptor*>& files,
 
     if (options.export_style == GeneratorOptions::kExportCommonJs) {
       GenerateCommonJSExports(options, &printer, &provided);
+    }
+
+    if (options.generate_descriptor) {
+      for (int i = 0; i < files.size(); i++) {
+        GenerateDescriptorForFile(options, &printer, files[i], provided);
+      }
     }
 
     if (printer.failed()) {

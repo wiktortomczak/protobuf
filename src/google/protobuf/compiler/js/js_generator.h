@@ -73,6 +73,7 @@ struct GeneratorOptions {
     kExportClosure,   // goog.provide()
     kExportCommonJs,  // exports.x = x
   } export_style;
+  bool generate_descriptor;
 
   GeneratorOptions()
       : output_dir("."),
@@ -80,6 +81,7 @@ struct GeneratorOptions {
         binary(false),
         import_style(kImportClosure),
         export_style(kExportClosure),
+        generate_descriptor(false),
         add_require_for_enums(false),
         testonly(false),
         library(""),
@@ -214,6 +216,11 @@ class LIBPROTOC_EXPORT Generator : public CodeGenerator {
                             std::set<string>* forwards,
                             std::set<string>* provided, bool require_jspb,
                             bool require_extension, bool require_map) const;
+  void FindRequiresForFile(const GeneratorOptions& options,
+                              const FileDescriptor* file,
+                              std::set<string>* required,
+                              std::set<string>* forwards,
+                              bool* have_message) const;
   void FindRequiresForMessage(const GeneratorOptions& options,
                               const Descriptor* desc,
                               std::set<string>* required,
@@ -227,6 +234,12 @@ class LIBPROTOC_EXPORT Generator : public CodeGenerator {
                                 const FieldDescriptor* field,
                                 std::set<string>* required,
                                 std::set<string>* forwards) const;
+
+  void GenerateDescriptorForFile(
+    const GeneratorOptions& options,
+    io::Printer* printer,
+    const FileDescriptor* file,
+    const std::set<string>& provided_all_files) const;
 
   void GenerateFile(const GeneratorOptions& options,
                     io::Printer* printer,
