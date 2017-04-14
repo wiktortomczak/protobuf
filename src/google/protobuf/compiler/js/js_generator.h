@@ -68,12 +68,14 @@ struct GeneratorOptions {
     kImportBrowser,   // no import statements
     kImportEs6,       // import { member } from ''
   } import_style;
+  bool generate_descriptor;
 
   GeneratorOptions()
       : output_dir("."),
         namespace_prefix(""),
         binary(false),
         import_style(kImportClosure),
+        generate_descriptor(false),
         add_require_for_enums(false),
         testonly(false),
         library(""),
@@ -198,6 +200,11 @@ class LIBPROTOC_EXPORT Generator : public CodeGenerator {
                             std::set<string>* forwards,
                             std::set<string>* provided, bool require_jspb,
                             bool require_extension, bool require_map) const;
+  void FindRequiresForFile(const GeneratorOptions& options,
+                              const FileDescriptor* file,
+                              std::set<string>* required,
+                              std::set<string>* forwards,
+                              bool* have_message) const;
   void FindRequiresForMessage(const GeneratorOptions& options,
                               const Descriptor* desc,
                               std::set<string>* required,
@@ -211,6 +218,12 @@ class LIBPROTOC_EXPORT Generator : public CodeGenerator {
                                 const FieldDescriptor* field,
                                 std::set<string>* required,
                                 std::set<string>* forwards) const;
+
+  void GenerateDescriptorForFile(
+    const GeneratorOptions& options,
+    io::Printer* printer,
+    const FileDescriptor* file,
+    const std::set<string>& provided_all_files) const;
 
   void GenerateFile(const GeneratorOptions& options,
                     io::Printer* printer,
