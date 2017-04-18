@@ -201,7 +201,7 @@ string BaseName(const string& filename) {
   const size_t basename_start = (dir_end != string::npos) ? dir_end + 1 : 0;
   return filename.substr(basename_start);
 }
-  
+
 // Returns the fully normalized JavaScript path for the given
 // file descriptor's package.
 string GetPath(const GeneratorOptions& options,
@@ -1890,14 +1890,17 @@ void Generator::GenerateDescriptorForFile(
   p[-2] = 0;
 
   // Generate jspb.addDescriptors(<file descriptor as Uint8Array>).
+  const string file_namespace =
+    GetPath(options, file) + "." + StripProto(BaseName(file->name()));
   const string file_descriptor_uint8_var_name =
-    GetPath(options, file) + "." + StripProto(BaseName(file->name()))
-    + ".fileDescriptorBinary";
+    file_namespace + ".fileDescriptorBinary";
   printer->Print(
+    "$file_namespace$ = $file_namespace$ || {};\n"
     "$file_descriptor_uint8_var_name$ = new Uint8Array([\n"
     "  $file_descriptor_uint8$\n"
     "]);\n"
     "jspb.addDescriptors($file_descriptor_uint8_var_name$);\n",
+    "file_namespace", file_namespace,
     "file_descriptor_uint8_var_name", file_descriptor_uint8_var_name,
     "file_descriptor_uint8", file_descriptor_uint8);
   printer->Print("\n");
