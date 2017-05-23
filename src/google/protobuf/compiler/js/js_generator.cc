@@ -1911,7 +1911,6 @@ void Generator::GenerateClassesAndEnums(const GeneratorOptions& options,
                                         const FileDescriptor* file) const {
   for (int i = 0; i < file->message_type_count(); i++) {
     GenerateClass(options, printer, file->message_type(i));
-    GenerateClassFromObject(options, printer, file->message_type(i));
   }
   for (int i = 0; i < file->enum_type_count(); i++) {
     GenerateEnum(options, printer, file->enum_type(i));
@@ -1930,7 +1929,7 @@ void Generator::GenerateClass(const GeneratorOptions& options,
     GenerateClassConstructor(options, printer, desc);
     GenerateClassFieldInfo(options, printer, desc);
 
-
+    GenerateClassFromObject(options, printer, desc);
     GenerateClassToObject(options, printer, desc);
     // These must come *before* the extension-field info generation in
     // GenerateClassRegistration so that references to the binary
