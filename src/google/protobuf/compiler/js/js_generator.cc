@@ -1540,6 +1540,7 @@ void Generator::GenerateHeader(const GeneratorOptions& options,
                  " * @fileoverview\n"
                  " * @enhanceable\n"
                  " * @public\n"
+                 " * @suppress {extraRequire, unusedLocalVariables}\n"
                  " */\n"
                  "// GENERATED CODE -- DO NOT EDIT!\n"
                  "\n");
@@ -1724,6 +1725,7 @@ void Generator::GenerateRequiresImpl(const GeneratorOptions& options,
                                      std::set<string>* provided,
                                      bool require_jspb, bool require_extension,
                                      bool require_map) const {
+  printer->Print("goog.require('goog.array');\n");
   if (require_jspb) {
     printer->Print(
         "goog.require('jspb.Message');\n"
@@ -1875,7 +1877,7 @@ void Generator::GenerateDescriptorForFile(
       printer->Print("goog.require('$name$.descriptor');\n", "name", *it);
     }
   }
-  printer->Print("goog.require('jspb.Descriptor');\n\n");
+  printer->Print("goog.require('jspb.descriptor');\n\n");
 
   // Generate file descriptor as Uint8Array.
   FileDescriptorProto file_descriptor_proto;
@@ -1899,7 +1901,7 @@ void Generator::GenerateDescriptorForFile(
     "$file_descriptor_uint8_var_name$ = new Uint8Array([\n"
     "  $file_descriptor_uint8$\n"
     "]);\n"
-    "jspb.addDescriptors($file_descriptor_uint8_var_name$);\n",
+    "jspb.descriptor.addDescriptors($file_descriptor_uint8_var_name$);\n",
     "file_namespace", file_namespace,
     "file_descriptor_uint8_var_name", file_descriptor_uint8_var_name,
     "file_descriptor_uint8", file_descriptor_uint8);

@@ -41,7 +41,6 @@ goog.provide('jspb.Message');
 goog.require('goog.array');
 goog.require('goog.asserts');
 goog.require('goog.crypt.base64');
-goog.require('goog.json');
 goog.require('jspb.Map');
 
 // Not needed in compilation units that have no protos with xids.
